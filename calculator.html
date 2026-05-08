@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+ 
+    :root {
+      --background-image: bg.jpg
+      ;
+      --card-bg: #ffffff;
+      --display-bg: #efefef;
+      --btn-bg: #f5f5f5;
+      --btn-shadow: 0 4px 10px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+      --btn-active-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --text-dark: #2c2c2c;
+      --text-op: #888;
+      --accent: #2c2c2c;
+      --radius-card: 28px;
+      --radius-btn: 14px;
+      --radius-display: 16px;
+    }
+ 
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      font-family: 'DM Mono', monospace;
+    }
+ 
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      padding: 28px 24px 32px;
+      width: 300px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.5),
+        0 10px 30px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+ 
+    .display {
+      background: var(--display-bg);
+      border-radius: var(--radius-display);
+      padding: 18px 20px;
+      margin-bottom: 24px;
+      min-height: 72px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+ 
+    .display-value {
+      font-size: 2.4rem;
+      font-weight: 400;
+      color: var(--text-dark);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      word-break: break-all;
+      transition: font-size 0.15s ease;
+    }
+ 
+    .display-value.small { font-size: 1.6rem; }
+    .display-value.xsmall { font-size: 1.2rem; }
+ 
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+ 
+    .btn {
+      background: var(--btn-bg);
+      border: none;
+      border-radius: var(--radius-btn);
+      height: 72px;
+      font-family: 'DM Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--text-dark);
+      cursor: pointer;
+      box-shadow: var(--btn-shadow);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.1s ease;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.02em;
+    }
+ 
+    .btn:active {
+      transform: scale(0.95) translateY(2px);
+      box-shadow: var(--btn-active-shadow);
+    }
+ 
+    .btn.op {
+      color: var(--text-op);
+      font-size: 1.3rem;
+    }
+ 
+    .btn.clear {
+      color: #c0392b;
+    }
+ 
+    .btn.equals {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(44,44,44,0.4);
+    }
+ 
+    .btn.zero {
+      grid-column: span 1;
+    }
+ 
+    .btn.wide {
+      grid-column: span 2;
+    }
+ 
+    /* Top row (operations) */
+    .btn.top {
+      color: #aaa;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="display">
+      <div class="display-value" id="display">1000</div>
+    </div>
+    <div class="grid" id="grid">
+      <!-- Row 1: operations -->
+      <button class="btn top" data-action="clear">AC</button>
+      <button class="btn top" data-action="sign">+/−</button>
+      <button class="btn top op" data-action="percent">%</button>
+ 
+      <!-- Row 2: 1 2 3 + -->
+      <button class="btn" data-value="1">1</button>
+      <button class="btn" data-value="2">2</button>
+      <button class="btn" data-value="3">3</button>
+ 
+      <!-- Row 3: 4 5 6 - -->
+      <button class="btn" data-value="4">4</button>
+      <button class="btn" data-value="5">5</button>
+      <button class="btn" data-value="6">6</button>
+ 
+      <!-- Row 4: 7 8 9 × -->
+      <button class="btn" data-value="7">7</button>
+      <button class="btn" data-value="8">8</button>
+      <button class="btn" data-value="9">9</button>
+ 
+      <!-- Row 5: 0 . = ÷ -->
+      <button class="btn wide" data-value="0">0</button>
+      <button class="btn" data-action="dot">.</button>
+    </div>
+  </div>
+ 
+  <script>
+    let current = '1000';
+    let previous = null;
+    let operator = null;
+    let resetNext = false;
+ 
+    const display = document.getElementById('display');
+ 
+    function updateDisplay(val) {
+      display.textContent = val;
+      const len = val.length;
+      display.className = 'display-value' + (len > 10 ? ' xsmall' : len > 7 ? ' small' : '');
+    }
+ 
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        const action = btn.dataset.action;
+ 
+        if (val !== undefined) {
+          if (current === '0' || resetNext) {
+            current = val;
+            resetNext = false;
+          } else {
+            if (current.replace('-','').replace('.','').length < 12)
+              current += val;
+          }
+          updateDisplay(current);
+        }
+ 
+        if (action === 'clear') {
+          current = '0';
+          previous = null;
+          operator = null;
+          resetNext = false;
+          updateDisplay('0');
+        }
+ 
+        if (action === 'sign') {
+          current = String(-parseFloat(current));
+          updateDisplay(current);
+        }
+ 
+        if (action === 'percent') {
+          current = String(parseFloat(current) / 100);
+          updateDisplay(current);
+        }
+ 
+        if (action === 'dot') {
+          if (resetNext) { current = '0'; resetNext = false; }
+          if (!current.includes('.')) current += '.';
+          updateDisplay(current);
+        }
+ 
+        if (action === 'op') {
+          if (operator && !resetNext) calculate();
+          previous = current;
+          operator = btn.dataset.op;
+          resetNext = true;
+        }
+ 
+        if (action === 'equals') {
+          calculate();
+          operator = null;
+        }
+      });
+    });
+ 
+    function calculate() {
+      if (!operator || previous === null) return;
+      const a = parseFloat(previous);
+      const b = parseFloat(current);
+      let result;
+      switch(operator) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/': result = b !== 0 ? a / b : 'Error'; break;
+      }
+      current = String(parseFloat(result.toFixed(10)));
+      previous = null;
+      resetNext = true;
+      updateDisplay(current);
+    }
+ 
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+      if (e.key >= '0' && e.key <= '9') document.querySelector(`[data-value="${e.key}"]`)?.click();
+      if (e.key === '.') document.querySelector('[data-action="dot"]')?.click();
+      if (e.key === 'Escape' || e.key === 'c') document.querySelector('[data-action="clear"]')?.click();
+      if (e.key === 'Enter' || e.key === '=') document.querySelector('[data-action="equals"]')?.click();
+    });
+  </script>
+</body>
+</html>
